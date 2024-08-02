@@ -231,11 +231,7 @@ def _package_log_payload(data):
                 "attributes": {**attributes, **additional_attributes}
             },
             "logs": log_messages,
-        }
-    ]
-
-    _get_newrelic_tags(packaged_payload)
-
+        }]
     return packaged_payload
 
 
@@ -267,19 +263,23 @@ async def send_log(session, url, data, headers):
             return resp.status, resp.url
         except aiohttp.ClientResponseError as e:
             if e.status == 400:
-                raise BadRequestException(_format_error(e, "Unexpected payload"))
+                raise BadRequestException(
+                    _format_error(e, "Unexpected payload"))
             elif e.status == 403:
-                raise BadRequestException(_format_error(e, "Review your license key"))
+                raise BadRequestException(
+                    _format_error(e, "Review your license key"))
             elif e.status == 404:
                 raise BadRequestException(
                     _format_error(e, "Review the region endpoint")
                 )
             elif e.status == 429:
-                logger.error(f"There was a {e.status} error. Reason: {e.message}")
+                logger.error(
+                    f"There was a {e.status} error. Reason: {e.message}")
                 # Now retry the request
                 continue
             elif e.status == 408:
-                logger.error(f"There was a {e.status} error. Reason: {e.message}")
+                logger.error(
+                    f"There was a {e.status} error. Reason: {e.message}")
                 # Now retry the request
                 continue
             elif 400 <= e.status < 500:
@@ -297,14 +297,14 @@ def create_log_payload_request(data, session):
 
 async def _fetch_data_from_s3(bucket, key, context):
     """
-    Stream data from S3 bucket. Create batches of size MAX_PAYLOAD_SIZE
-    and create async requests from batches
+        Stream data from S3 bucket. Create batches of size MAX_PAYLOAD_SIZE
+        and create async requests from batches
     """
-    log_file_size = boto3.resource("s3").Bucket(bucket).Object(key).content_length
+    log_file_size = boto3.resource('s3').Bucket(
+        bucket).Object(key).content_length
     if log_file_size > MAX_FILE_SIZE:
         logger.error(
-            "The log file uploaded to S3 is larger than the supported max size of 400MB"
-        )
+            "The log file uploaded to S3 is larger than the supported max size of 400MB")
         return
     BATCH_SIZE_FACTOR = _get_batch_size_factor()
     s3MetaData = {
@@ -371,33 +371,30 @@ def get_s3_event(event):
 #  Lambda handler  #
 ####################
 
-
 def lambda_handler(event, context):
     # Get bucket from s3 upload event
     _setting_console_logging_level()
     s3_event = get_s3_event(event)
-    bucket_name = s3_event["bucket"]["name"]
-    object_key = urllib.parse.unquote_plus(
+    bucket = s3_event["bucket"]["name"]
+    key = urllib.parse.unquote_plus(
         s3_event["object"]["key"], encoding="utf-8")
 
-    # Allow user to skip log file using regex pattern set in env variable: S3_IGNORE_PATTERN
+    # Allow user to skip log file using regex pattern set in env variable: S3_IGNORE_PATTERN 
     if _is_ignore_log_file(key):
         logger.debug(f"Ignore log file based on S3_IGNORE_PATTERN: {key}")
         return {'statusCode': 200, 'message': 'ignored this log'}
 
     try:
-        asyncio.run(_fetch_data_from_s3(bucket_name, object_key, context))
+        asyncio.run(_fetch_data_from_s3(bucket, key, context))
     except KeyError as e:
         logger.error(e)
         logger.error(
-            f"Error getting object {object_key} from bucket {bucket_name}. Make sure they exist and your bucket is in the same region as this function."
-        )
+            f'Error getting object {key} from bucket {bucket}. Make sure they exist and your bucket is in the same region as this function.')
         raise e
     except OSError as e:
         logger.error(e)
         logger.error(
-            f"Error processing the object {object_key} from bucket {bucket_name}."
-        )
+            f"Error processing the object {key} from bucket {bucket}.")
         raise e
     except MaxRetriesException as e:
         logger.error("Retry limit reached. Failed to send log entry.")
@@ -409,8 +406,8 @@ def lambda_handler(event, context):
         logger.error(f"Error occurred: {e}")
         raise e
     else:
-        return {"statusCode": 200, "message": "Uploaded logs to New Relic"}
+        return {'statusCode': 200, 'message': 'Uploaded logs to New Relic'}
 
 
 if __name__ == "__main__":
-    lambda_handler("", "")
+    lambda_handler('', '')
