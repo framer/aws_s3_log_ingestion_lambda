@@ -231,11 +231,7 @@ def _package_log_payload(data):
                 "attributes": {**attributes, **additional_attributes}
             },
             "logs": log_messages,
-        }
-    ]
-
-    _get_newrelic_tags(packaged_payload)
-
+        }]
     return packaged_payload
 
 
